@@ -12,6 +12,7 @@ const uint8_t NUM_LED = 4; //Il totale dei led nella serra
 const uint8_t PIN_LED[NUM_LED] = {9, 10, 11, 12}; //I pin dei led
 
 uint8_t high_flg, low_flg, norm_flg; //Variabili di controllo per l'attivazione dei led
+uint16_t media;
 
 /**
  * Qui sotto la dichiarazione delle soglie:
@@ -51,14 +52,7 @@ void setup()
 
 void loop()
 {
-  /**
-   * funzione di lettura dei sensori
-   */
-    for(int i = 0; i < NUM_SENSOR; i++)
-    {
-      raw_data[i] = analogRead(PIN_SENSOR[i]);
-    }
-  
+    
     /**
      * Controllare le letture dei sensori secondo questo schema:
      *  -> se tutti i sensori leggono la luce alta,  high_flg = 4;
