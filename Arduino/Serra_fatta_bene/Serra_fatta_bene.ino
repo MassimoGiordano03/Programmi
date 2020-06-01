@@ -11,8 +11,14 @@ int16_t raw_data[NUM_SENSOR]; //Array di controllo per le letture grezzo
 const uint8_t NUM_LED = 4; //Il totale dei led nella serra
 const uint8_t PIN_LED[NUM_LED] = {9, 10, 11, 12}; //I pin dei led
 
-uint8_t high_flg, low_flg, norm_flg; //Variabili di controllo per l'attivazione dei led
-uint16_t media;
+const uint8_t PIN_BUZZ = 13; //pin fisico  del buzzer
+
+const uint8_t PIN_SWITCH = 8; //pin fisico dell'INTERRUTTORE
+uint8_t read_switch;
+
+uint8_t high_flg, low_flg, norm_flg, ctr; //Variabili di controllo per l'attivazione dei led
+uint16_t somma, media; 
+uint8_t prev_led[3], current_led[3]; //vettori per sapere se il led è stato acceso prima
 
 /**
  * Qui sotto la dichiarazione delle soglie:
@@ -27,104 +33,27 @@ uint16_t media;
 
 void setup()
 {
-  /**
-   * inizializzazione delle variabili e dei pin che si usano
-   */
-  for(int i = 0; i < NUM_LED; i++)
-  {
-    /**
-     * i pin dei sensori di luce sono automaticamente
-     * di input, dato che sono analogici
-     */
-    pinMode(PIN_LED[i], OUTPUT);  
-
-    raw_data[i] = 0;
-  }
-  /**
-   * Inizializzazione variabili di controllo.
-   * Le flg servono per non ripetere nel programma troppe volte le funzioni
-   * per azionare i pin arduino.
-   */
-  high_flg = 0;
-  low_flg = 0;
-  norm_flg = 0;
+	init();
 }
 
 void loop()
 {
-    
-    /**
-     * Controllare le letture dei sensori secondo questo schema:
-     *  -> se tutti i sensori leggono la luce alta,  high_flg = 4;
-     *  -> se almeno 1 sensore legge la luce alta, ma non tutti, high_flg > 0;
-     *  -> se almeno 1 sensore legge la luce bassa, low_flg > 0;
-     *  -> se tutti i sensori leggono la luce nella norma, norm_flg > 0;
-     */
-    for(int i = 0; i < NUM_SENSOR; i++) //test dei sensori
-    {
-      if(raw_data[i] >= HIGH_TRESHOLD)
-      {
-        high_flg++;
-      }
-      else if(raw_data[i] <= LOW_TRESHOLD)
-      {
-        low_flg++;
-      }
-      else
-      {
-        norm_flg++;
-      }
-    }
+	read_switch = analogRead(PIN_SWITCH); //lettura dell'interruttore
+	/**
+	 * controllo se l'interruttore è aperto o chiuso.
+	 * serve un qualcosa di fisico per spegnere la serra, questa cosa è un interruttore
+	 *
+	 * se è aperto, il circuito è in pausa
+	 * se è chiuso, il curcuito funziona e lavora sempre ogni 200ms
+	 */
+	if(read_switch == HIGH)
+	{
+		read(); //lettura dei sensori
 
-    /**
-     * Spengo tutti i led prima di accendere solo quelli che mi servono
-     */
-    for(int i = 0; i < NUM_LED; i++) //spegnimento di tutti i led
-    {
-      digitalWrite(PIN_LED[i], LOW);
-    }
+		test(); //calcolo della media e impostazione delle flg
 
-    /**
-     * Controllare lo stato delle flg:
-     *  -> se high_flg == 4, accendere led rosso(PIN_LED[0]);
-     *  -> se high_flg >= 0, accendere led rosso(PIN_LED[1]);
-     *  -> se low_flg >= 0, accendere led rosso(PIN_LED[2]);
-     *  -> se norm_flg == 4, accendere led rosso(PIN_LED[3]);
-     */
-    if(high_flg > 0) //vuol dire che almeno un sensore ha letto la luce alta
-    {
-      if(high_flg == 4)
-      {
-        digitalWrite(PIN_LED[0], HIGH); //tutti i sensori hanno letto luce alta, acceso il led rosso
-        /**
-         * potremmo azionare un buzz quando si ha troppa luce e
-         * farlo suonare a frequenze molto basse
-         */
-      }
-      else
-      {
-        digitalWrite(PIN_LED[1], HIGH); //massimo 3 sensori hanno letto luce alta, acceso il led giallo
-      }
-    }
-    if(low_flg > 0)
-    {
-      digitalWrite(PIN_LED[2], HIGH); //almeno 1 sensore ha letto luce bassa, acceso il led bianco
-      /**
-       * anche qui potrebbe esserci un allarme diverso dal semplice led, un altro buzzer per esempio
-       * che suona a frequenze più alte e per meno tempo
-       */
-    }
-    if(norm_flg == 4)
-    {
-      digitalWrite(PIN_LED[3], HIGH); //solo quando non ci sono allarmi attivi si accende il led verde
-    }
-
-    /**
-     * resettiamo tutte le variabili di supporto al codice
-     */
-    high_flg = 0;
-    low_flg = 0;
-    norm_flg = 0;
-  
-  delay(200);
+		handle(); //invio segnali ai led
+	  
+		delay(200); //aspetto 200ms
+	}
 }
