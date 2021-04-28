@@ -5,7 +5,8 @@
 
 #define DELAY_ROSSO 25000
 #define DELAY_GIALLO 5000
-#define NUM_SEMAFORI 2 //sono 2 i semafori, dato che alcuni lavorano con gli stessi colori
+#define NUM_SEMAFORI 2 //sono 2 i semafori, dato che per il test lavoro con metà progetto
+#define SOGLIA DISTANZA 100 //soglia da impostare in base alla distanza massima del semaforo
 
 int stato_attuale = 0;
 int segnale_attuale = -1;
@@ -16,8 +17,10 @@ unsigned long int prev_millis_giallo = millis()
 uint8_t PIN_ROSSO[NUM_SEMAFORI] = {3, 4};
 uint8_t PIN_GIALLO[NUM_SEMAFORI] = {5, 6};
 uint8_t PIN_VERDE[NUM_SEMAFORI] = {7, 8};
-uint8_t PIN_PULSANTE[NUM_SEMAFORI] = {9, 10};
-uint8_t PIN_BIANCO[NUM_SEMAFORI] = {11, 12};
+uint8_t PIN_PULSANTE = 9;
+uint8_t PIN_BIANCO = 10;
+uint8_t PIN_TRIG = 11;
+uint8_t PIN_ECHO = 12;
 /**
  * I led per le macchine hanno indice dell'array 1, mentre quello per i pedoni ha indice 0
  */
@@ -26,17 +29,22 @@ void setup()
 {
 	for(int i = 0; i < NUM_SEMAFORI, ++i) //set pin come output
 	{
-		digitalWrite(PIN_ROSSO[i], OUTPUT);
-		digitalWrite(PIN_GIALLO[i], OUTPUT);
-		digitalWrite(PIN_VERDE[i], OUTPUT);
-		digitalWrite(PIN_PULSANTE[i], INPUT);
-		digitalWrite(PIN_BIANCO[i], OUTPUT);
+		pinMode(PIN_ROSSO[i], OUTPUT);
+		pinMode(PIN_GIALLO[i], OUTPUT);
+		pinMode(PIN_VERDE[i], OUTPUT);
 
 		digitalWrite(PIN_ROSSO[i], LOW);
 		digitalWrite(PIN_GIALLO[i], LOW);
 		digitalWrite(PIN_VERDE[i], LOW);
-		digitalWrite(PIN_BIANCO[i], LOW);
 	}
+	pinMode(PIN_PULSANTE, INPUT);
+	pinMode(PIN_BIANCO, OUTPUT);
+	digitalWrite(PIN_BIANCO, LOW);
+
+	pinMode(PIN_TRIG, OUTPUT);
+	pinMode(PIN_ECHO, INPUT);
+
+	Serial.begin(9600);
 }
 
 void loop() {
@@ -51,23 +59,23 @@ void loop() {
 	* 3 : passati 5 secondi dall'ultimo giallo
 	*/
 
-	if(funzione_che_tidice_se_chiamano_il_semaforo() == TRUE) 
+	if(letturaPulsante() == TRUE) //se il pulsante è stato premuto
 	{
 		segnale_attuale = 0;
 		prev_millis_giallo = current_millis;
 		prev_millis_rosso = current_millis;
 	} 
-	else if(funzione_che_tidice_se_passa_macchina() == TRUE) 
+	else if(letturaUltrasuono() == TRUE) //se è passata una macchina
 	{
 		segnale_attuale = 1;
 	} 
-	else if(current_millis - prev_millis_rosso >= 25000) 
+	else if(current_millis - prev_millis_rosso >= 25000) //se sono passati 25s dal rosso precedente
 	{
 		prev_millis_rosso = current_millis;
 		prev_millis_giallo = current_millis;
 		segnale_attuale = 2;
 	} 
-	else if(current_millis - prev_millis_giallo >= 5000) 
+	else if(current_millis - prev_millis_giallo >= 5000) //se sono passati 5s dal giallo precedente
 	{
 		prev_millis_giallo = current_millis;
 		prev_millis_rosso = current_millis;
@@ -173,4 +181,39 @@ void loop() {
 	break;
 	}
 	segnale_attuale = -1;
+}
+
+bool letturaPulsante()
+{
+	uint8_t lettura_pulsante = analogRead(PIN_PULSANTE[0]); //lettura del pulsante salvata in una variabile
+
+	if(lettura_pulsante == HIGH) //se è stato letto ritorna un valore vero
+	{
+		return TRUE;
+	}
+	else //se non è stato letto ritorna un valore falso
+	{
+		return FALSE;
+	}
+}
+
+bool letturaUltrasuono()
+{
+	//accendiamo il trig e aspettiamo 10 microsecondi per poi spegnerlo
+	digitalWrite(PIN_TRIG, LOW);
+	digitalWrite(PIN_TRIG, HIGH);
+	delayMicroseconds(10);
+	digitalWrite(PIN_TRIG, LOW);
+
+	long durata = pulseIn(PIN_ECHO, HIGH);
+	long distanza = durata/58.31; //necessario per sapere la distanza della lettura
+
+	if(distanza <= SOGLIA_DISTANZA) //se il pin echo legge un valore, significa che è passata una macchina
+	{
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
 }
