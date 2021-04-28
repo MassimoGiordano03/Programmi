@@ -3,56 +3,174 @@
  * Massimo Giordano
  */
 
-/**
- * Il semaforo deve ciclare i 3 colori, è provvisto di pulsante per la chiamata. Se il pulsante
- * viene premuto, bisogna aspettare un po' per poi far diventare il semaforo pedonale verde
- * Il rosso dura 35 secondi
- * Il giallo dura 5 secondi
- * Il verde dura 25 secondi
- *
- * C'è anche il sensore di prossimità per le macchine che passano con il rosso. Quando rileva qualcosa
- * fa flashare un led bianco
- *
- * Sono previsti 4 semafori, 2 per le macchine e 2 per i pedoni. I semafori veicolari hanno i sensori di prossimità
- * per vedere se passano con il rosso.
- * C'è anche un crepuscolare per accendere 4 led sull'incrocio la sera
- *
- * Quando il semaforo 1 è verde, i semafori 2 e 3 sono rossi e il 4 è verde
- * Quando il semaforo 2 è verde, i semafori 1 e 4 sono rossi e il 3 è verde
- */
-struct Semaforo //la struttura definisce tutte le variabili che servono ai semafori per funzionare
-{
-	uint8_t ROSSO, VERDE, GIALLO; //variabile dei pin dei led del semaforo
-	uint8_t PULSANTE; //solo per i semafori pedonali. Serve per la chiamata pedonale
-	uint8_t TRIG, ECHO; //solo per i semafori veicolari. Sono i pin degli ultrasuoni
-	uint8_t LED_BIANCO, LUCE_ABMIENTE, FOTORESISTENZA; //aggiunte al semaforo per flash e crepuscolare
-
-	uint8_t stato_semaforo; //analizzare lo stato del semaforo
-	/**
-	 * Questa variabile serve per registrare lo stato del semaforo in base al colore:
-	 * 	Se è acceso il colore rosso, la variabile è uguale ad 1
-	 * 	Se è acceso il colore giallo, la variabile è uguale a 2
-	 * 	Se è acceso il colore verde, la variabile è uguale a 3
-	 */
-};
-Semaforo Macchina1, Macchina2, Pedone1, Pedone2; //dichiarazione di tutti gli oggetti
-
-Macchina1* m1;
-Macchina2* m2; //puntatori ai semafori veicolari
-
-Pedone1* p1;
-Pedone2* p2; //puntatori ai  semafori pedonali
-
-#define DELAY_ROSSO 35000
-#define DELAY_VERDE 25000
+#define DELAY_ROSSO 25000
 #define DELAY_GIALLO 5000
+#define NUM_SEMAFORI 2 //sono 2 i semafori, dato che alcuni lavorano con gli stessi colori
 
-void setup()
+int stato_attuale = 0;
+int segnale_attuale = -1;
+
+unsigned long int prev_millis_rosso  = millis()
+unsigned long int prev_millis_giallo = millis()
+
+uint8_t PIN_ROSSO[NUM_SEMAFORI] = {3, 4};
+uint8_t PIN_GIALLO[NUM_SEMAFORI] = {5, 6};
+uint8_t PIN_VERDE[NUM_SEMAFORI] = {7, 8};
+uint8_t PIN_PULSANTE[NUM_SEMAFORI] = {9, 10};
+uint8_t PIN_BIANCO[NUM_SEMAFORI] = {11, 12};
+/**
+ * I led per le macchine hanno indice dell'array 1, mentre quello per i pedoni ha indice 0
+ */
+
+void setup() 
 {
-	initMacchina(&Macchina1, &Macchina2);
+	for(int i = 0; i < NUM_SEMAFORI, ++i) //set pin come output
+	{
+		digitalWrite(PIN_ROSSO[i], OUTPUT);
+		digitalWrite(PIN_GIALLO[i], OUTPUT);
+		digitalWrite(PIN_VERDE[i], OUTPUT);
+		digitalWrite(PIN_PULSANTE[i], INPUT);
+		digitalWrite(PIN_BIANCO[i], OUTPUT);
+
+		digitalWrite(PIN_ROSSO[i], LOW);
+		digitalWrite(PIN_GIALLO[i], LOW);
+		digitalWrite(PIN_VERDE[i], LOW);
+		digitalWrite(PIN_BIANCO[i], LOW);
+	}
 }
 
-void loop()
-{
+void loop() {
 
+	unsigned long int current_millis = millis()
+	// Generare i segnali
+	/**
+	* TAVOLA SEGNALI:
+	* 0 : semaforo chiamato da pedone
+	* 1 : macchina rilevata da ultrasuoni
+	* 2 : passati 25 secondi dall'ultimo rosso
+	* 3 : passati 5 secondi dall'ultimo giallo
+	*/
+
+	if(funzione_che_tidice_se_chiamano_il_semaforo() == TRUE) 
+	{
+		segnale_attuale = 0;
+		prev_millis_giallo = current_millis;
+		prev_millis_rosso = current_millis;
+	} 
+	else if(funzione_che_tidice_se_passa_macchina() == TRUE) 
+	{
+		segnale_attuale = 1;
+	} 
+	else if(current_millis - prev_millis_rosso >= 25000) 
+	{
+		prev_millis_rosso = current_millis;
+		prev_millis_giallo = current_millis;
+		segnale_attuale = 2;
+	} 
+	else if(current_millis - prev_millis_giallo >= 5000) 
+	{
+		prev_millis_giallo = current_millis;
+		prev_millis_rosso = current_millis;
+		segnale_attuale = 3;
+	}
+
+	switch(stato_attuale) 
+	{
+	case 0: // R(pedoni) - V(macchine)
+		// Accende i led (rosso pe li pedoni e verde pe le macchine)
+		
+		digitalWrite(PIN_ROSSO[0], HIGH); //led rosso acceso
+		digitalWrite(PIN_GIALLO[0], LOW);
+		digitalWrite(PIN_VERDE[0], LOW);
+
+		digitalWrite(PIN_ROSSO[1], LOW);
+		digitalWrite(PIN_GIALLO[1], LOW);
+		digitalWrite(PIN_VERDE[1], HIGH); //led verde acceso
+
+		if(segnale_attuale == 0 || segnale_attuale == 2) 
+		{
+			stato_attuale = 1;
+		}
+	break;
+	case 1:
+		// R(pedoni) - G(macchine)
+		// Accende i led (rosso pe li pedoni e giallo pe le macchine)
+		 
+		digitalWrite(PIN_ROSSO[0], HIGH); //led rosso acceso
+		digitalWrite(PIN_GIALLO[0], LOW);
+		digitalWrite(PIN_VERDE[0], LOW);
+
+		digitalWrite(PIN_ROSSO[1], LOW);
+		digitalWrite(PIN_GIALLO[1], HIGH); //led giallo acceso
+		digitalWrite(PIN_VERDE[1], LOW); 
+
+		if(segnale_attuale == 3) 
+		{
+			stato_attuale = 2;
+		}
+	break;
+	case 2:
+		// V(pedoni) - R(macchine)
+		// Accende i led (verde pe li pedoni e rosso pe le macchine)
+		
+		digitalWrite(PIN_ROSSO[0], LOW);
+		digitalWrite(PIN_GIALLO[0], LOW);
+		digitalWrite(PIN_VERDE[0], HIGH); //led verde acceso
+
+		digitalWrite(PIN_ROSSO[1], HIGH); //led rosso acceso
+		digitalWrite(PIN_GIALLO[1], LOW); 
+		digitalWrite(PIN_VERDE[1], LOW); 
+
+		if(segnale_attuale == 1) 
+		{
+			stato_attuale = 4;
+		} 
+		else if(segnale_attuale == 2) 
+		{
+			stato_attuale = 3;
+		}
+	break;
+	case 3:
+		// G(pedoni) - R(macchine)
+		// Accende i led (giallo pe li pedoni e rosso pe le macchine)
+		
+		digitalWrite(PIN_ROSSO[0], LOW);
+		digitalWrite(PIN_GIALLO[0], HIGH); //led giallo acceso
+		digitalWrite(PIN_VERDE[0], LOW);
+
+		digitalWrite(PIN_ROSSO[1], HIGH); //led rosso acceso
+		digitalWrite(PIN_GIALLO[1], LOW); 
+		digitalWrite(PIN_VERDE[1], LOW); 
+
+		if(segnale_attuale == 1) 
+		{
+			stato_attuale = 5;
+		} 
+		else if(segnale_attuale == 3) 
+		{
+			stato_attuale = 0;
+		}
+	break;
+	case 4:
+		// FLASH V(pedoni) - R(macchine)
+		// fai un flash e torna nello stato 2
+		
+		digitalWrite(PIN_BIANCO[0], HIGH);
+		delay(200);
+		digitalWrite(PIN_BIANCO[0], LOW);
+
+		stato_attuale = 2;
+	break;
+	case 5:
+		// FLASH G(pedoni) - R(macchine)
+		// fai un flash e torna nello stato 3
+		
+		digitalWrite(PIN_BIANCO[1], HIGH);
+		delay(200);
+		digitalWrite(PIN_BIANCO[1], LOW);
+
+		stato_attuale = 3;
+	break;
+	}
+	segnale_attuale = -1;
 }
