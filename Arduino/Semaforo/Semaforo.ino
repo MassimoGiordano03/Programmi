@@ -1,6 +1,9 @@
 /**
- * semaforo.ino
+ * Semaforo.ino
  * Massimo Giordano
+ *
+ * Il programma è stato pensato esclusivamente per due semafori
+ * Nel momento in cui si effettuano i test e funziona, verranno aggiunti anche gli altri due
  */
 
 #define DELAY_ROSSO 25000
