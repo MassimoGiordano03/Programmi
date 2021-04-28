@@ -6,16 +6,18 @@
  * Nel momento in cui si effettuano i test e funziona, verranno aggiunti anche gli altri due
  */
 
+#include <Arduino.h>
+
 #define DELAY_ROSSO 25000
 #define DELAY_GIALLO 5000
 #define NUM_SEMAFORI 2 //sono 2 i semafori, dato che per il test lavoro con metà progetto
-#define SOGLIA DISTANZA 100 //soglia da impostare in base alla distanza massima del semaforo
+#define SOGLIA_DISTANZA 100 //soglia da impostare in base alla distanza massima del semaforo
 
 int stato_attuale = 0;
 int segnale_attuale = -1;
 
-unsigned long int prev_millis_rosso  = millis()
-unsigned long int prev_millis_giallo = millis()
+unsigned long int prev_millis_rosso  = millis();
+unsigned long int prev_millis_giallo = millis();
 
 uint8_t PIN_ROSSO[NUM_SEMAFORI] = {3, 4};
 uint8_t PIN_GIALLO[NUM_SEMAFORI] = {5, 6};
@@ -30,7 +32,7 @@ uint8_t PIN_ECHO = 12;
 
 void setup() 
 {
-	for(int i = 0; i < NUM_SEMAFORI, ++i) //set pin come output
+	for(int i = 0; i < NUM_SEMAFORI; ++i) //set pin come output
 	{
 		pinMode(PIN_ROSSO[i], OUTPUT);
 		pinMode(PIN_GIALLO[i], OUTPUT);
@@ -52,7 +54,7 @@ void setup()
 
 void loop() {
 
-	unsigned long int current_millis = millis()
+	unsigned long int current_millis = millis();
 	// Generare i segnali
 	/**
 	* TAVOLA SEGNALI:
@@ -62,13 +64,13 @@ void loop() {
 	* 3 : passati 5 secondi dall'ultimo giallo
 	*/
 
-	if(letturaPulsante() == TRUE) //se il pulsante è stato premuto
+	if(letturaPulsante() == HIGH) //se il pulsante è stato premuto
 	{
 		segnale_attuale = 0;
 		prev_millis_giallo = current_millis;
 		prev_millis_rosso = current_millis;
 	} 
-	else if(letturaUltrasuono() == TRUE) //se è passata una macchina
+	else if(letturaUltrasuono() == HIGH) //se è passata una macchina
 	{
 		segnale_attuale = 1;
 	} 
@@ -166,9 +168,9 @@ void loop() {
 		// FLASH V(pedoni) - R(macchine)
 		// fai un flash e torna nello stato 2
 		
-		digitalWrite(PIN_BIANCO[0], HIGH);
+		digitalWrite(PIN_BIANCO, HIGH);
 		delay(200);
-		digitalWrite(PIN_BIANCO[0], LOW);
+		digitalWrite(PIN_BIANCO, LOW);
 
 		stato_attuale = 2;
 	break;
@@ -176,9 +178,9 @@ void loop() {
 		// FLASH G(pedoni) - R(macchine)
 		// fai un flash e torna nello stato 3
 		
-		digitalWrite(PIN_BIANCO[1], HIGH);
+		digitalWrite(PIN_BIANCO, HIGH);
 		delay(200);
-		digitalWrite(PIN_BIANCO[1], LOW);
+		digitalWrite(PIN_BIANCO, LOW);
 
 		stato_attuale = 3;
 	break;
@@ -188,15 +190,15 @@ void loop() {
 
 bool letturaPulsante()
 {
-	uint8_t lettura_pulsante = analogRead(PIN_PULSANTE[0]); //lettura del pulsante salvata in una variabile
+	uint8_t lettura_pulsante = analogRead(PIN_PULSANTE); //lettura del pulsante salvata in una variabile
 
 	if(lettura_pulsante == HIGH) //se è stato letto ritorna un valore vero
 	{
-		return TRUE;
+		return HIGH;
 	}
 	else //se non è stato letto ritorna un valore falso
 	{
-		return FALSE;
+		return LOW;
 	}
 }
 
@@ -213,10 +215,10 @@ bool letturaUltrasuono()
 
 	if(distanza <= SOGLIA_DISTANZA) //se il pin echo legge un valore, significa che è passata una macchina
 	{
-		return TRUE;
+		return HIGH;
 	}
 	else
 	{
-		return FALSE;
+		return LOW;
 	}
 }
